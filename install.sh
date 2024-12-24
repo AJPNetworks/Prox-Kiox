@@ -239,8 +239,9 @@ echo "-----------------"
 echo "Exiting Prox-Kiox"
 echo "-----------------"
 EOSCRIPT
+result=$?
 
-if ! $? ; then
+if [ $result -ne 0 ]; then
   echo ""
   echo "------------------------------------------------------------------"
   echo "Failed to install! Removing dependencies...."

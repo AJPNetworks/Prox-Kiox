@@ -9,7 +9,6 @@ repos:
     hooks:
       - id: mdformat
         name: Format Markdown
-        stages: [manual]
         entry: mdformat  # Executable to run, with fixed options
         language: python
         types: [markdown]
@@ -18,6 +17,8 @@ repos:
           - mdformat-toc
           - mdformat-gfm
           - mdformat-beautysh
+          - setuptools
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
