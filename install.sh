@@ -1,4 +1,7 @@
 #!/bin/bash
+# shellcheck disable=2028
+
+KIOSK_URL=${KIOSK_URL:=https://127.0.0.1:8006}
 
 echo ""
 echo "-----------------------------------------------------------------------------------------------------------------------"
@@ -41,13 +44,13 @@ echo ""
 
 
 echo "------------------------------------------------------------------"
-read -p "Are you reinstalling prox-kiox? [Y/n]: " input
+read -r -p "Are you reinstalling prox-kiox? [Y/n]: " input
 echo ""
 input=${input:-Y}
 input=${input,,}
 
-## Just a redundant dir change incase not in that dir already
-cd /root
+## Just a redundant dir change in case not in that dir already
+cd /root || exit 1
 
 if [[ $input == "y" ]]; then
   echo "Killing processes..."
@@ -133,6 +136,7 @@ echo "Initializing Firefox-ESR"
 echo "------------------------------------------------------------------"
 sleep 0.5
 firefox-esr --headless > /dev/null 2>&1 &
+result=$?
 sleep 5
 killall firefox-esr > /dev/null
 echo "------------------------------------------------------------------"
@@ -140,8 +144,7 @@ echo "Done!"
 echo "------------------------------------------------------------------"
 echo ""
 
-
-if [[ $? -ne 0 ]]; then
+if [[ $result -ne 0 ]]; then
   echo ""
   echo "------------------------------------------------------------------"
   echo "Failed to install dependencies. Purging the rest..."
@@ -154,7 +157,6 @@ if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
-
 echo ""
 echo "------------------------------------------------------------------"
 echo "Installing bash command script"
@@ -163,23 +165,24 @@ echo "------------------------------------------------------------------"
 
 
 # Install the bash command script
-
-if ! echo '#!/bin/bash
+sed "s@KIOSKURL@${KIOSK_URL}@g" > /usr/bin/prox-kiox <<'EOSCRIPT'
+#!/bin/bash
+KIOSK_URL=${KIOSK_URL:=KIOSKURL}
 if pgrep -x "firefox-esr" >/dev/null; then
-    clear
-    echo "Priox-Kiox already running"
-    return 0
+  clear
+  echo "Prox-Kiox already running"
+  return 0
 fi
 
 profile_dir=$(find "$HOME/.mozilla/firefox/" -name "*.default-esr" -type d)
 if [ -z "$profile_dir" ]; then
-    echo ""
-    echo "Firefox profile directory not found."
-    return 1
+  echo ""
+  echo "Firefox profile directory not found."
+  return 1
 fi
 prefsfile="$profile_dir/sessionstore-backups"
 
-rm -rf "$prefsfile"/*
+rm -rf "${prefsfile:?}"/*
 
 mode=""
 while [[ $# -gt 0 ]]; do
@@ -202,43 +205,42 @@ export DISPLAY=:0
 sleep 1
 nohup openbox &
 while true; do
-    result=$(xdpyinfo 2>&1)
-    if [[ $result == *"unable to open display"* ]]; then
-        echo "Display not available yet"
-        sleep 0.25
-    else
-        echo "X server is running and display is available."
-        sleep 0.25
-        break
-    fi
+  result=$(xdpyinfo 2>&1)
+  if [[ $result == *"unable to open display"* ]]; then
+    echo "Display not available yet"
+    sleep 0.25
+  else
+    echo "X server is running and display is available."
+    sleep 0.25
+    break
+  fi
 done
 sleep 1
 
 if [[ $mode = kiosk ]]; then
-  nohup firefox-esr --kiosk https://127.0.0.1:8006 &
+  nohup firefox-esr --kiosk "${KIOSK_URL}" &
 else
-  nohup firefox-esr https://127.0.0.1:8006 &
+  nohup firefox-esr "${KIOSK_URL}" &
 fi
 
 wait $!
 
 if pgrep -x "xinit" >/dev/null; then
-    echo "Killing xinit process"
-    killall xinit
+  echo "Killing xinit process"
+  killall xinit
 fi
 
 if pgrep -x "firefox-esr" >/dev/null; then
-    echo "Killing firefox-esr process"
-    killall firefox-esr
+  echo "Killing firefox-esr process"
+  killall firefox-esr
 fi
 clear
 echo "-----------------"
 echo "Exiting Prox-Kiox"
-echo "-----------------"' | tee /usr/bin/prox-kiox > /dev/null; then
+echo "-----------------"
+EOSCRIPT
 
-
-
-
+if ! $? ; then
   echo ""
   echo "------------------------------------------------------------------"
   echo "Failed to install! Removing dependencies...."

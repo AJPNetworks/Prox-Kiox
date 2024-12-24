@@ -4,7 +4,7 @@
 
 ### This Project was idealized by a member of the Harvey's Virtual Environment Discord community and brought together by myself.  All credit for the idea goes the HSVE Community.
 
-### Prox-Kiox is simply an install script that will essentially turn any Proxmox intall into a kiosk setup, allowing for full UI managemnt of Proxmox from its main display out.
+### Prox-Kiox is simply an install script that will essentially turn any Proxmox install into a kiosk setup, allowing for full UI managemnt of Proxmox from its main display out.
 ### It will install a window manager as well as Firefox in order to achieve this by opening a window automatically and placing it in full screen mode after navigating to the correct location, being http://127.0.0.1:8006.
 
 ### You can find more about Harvey's Virtual Environment at the following
@@ -28,8 +28,7 @@
 
 This may not work or may be instable
 
-~sh <(curl -sS https://raw.githubusercontent.com/AJPNetworks/Prox-Kiox/main/install.sh)~
-
+~`sh <(curl -sS https://raw.githubusercontent.com/AJPNetworks/Prox-Kiox/main/install.sh)`~
 
 
 ### WGET Download
@@ -55,30 +54,31 @@ Next, we need to install the following dependencies
 
 ``apt-get install -y firefox-esr xinit x11-utils openbox``
 
-An easy way to beable to call this script whenever is by creating a bash command
+An easy way to be able to call this script whenever is by creating a bash command
 We first need to create the file that houses the script with the following command and then nano into it.
 
 ``touch /usr/bin/prox-kiox && nano /usr/bin/prox-kiox``
 
 The following code should be placed in the file
 
-```
+```bash
 #!/bin/bash
+KIOSK_URL=${KIOSK_URL:=https://127.0.0.1:8006}
 if pgrep -x "firefox-esr" >/dev/null; then
-    clear
-    echo "Priox-Kiox already running"
-    return 0
+  clear
+  echo "Prox-Kiox already running"
+  return 0
 fi
 
 profile_dir=$(find "$HOME/.mozilla/firefox/" -name "*.default-esr" -type d)
 if [ -z "$profile_dir" ]; then
-    echo ""
-    echo "Firefox profile directory not found."
-    return 1
+  echo ""
+  echo "Firefox profile directory not found."
+  return 1
 fi
 prefsfile="$profile_dir/sessionstore-backups"
 
-rm -rf "$prefsfile"/*
+rm -rf "${prefsfile:?}"/*
 
 mode=""
 while [[ $# -gt 0 ]]; do
@@ -94,39 +94,58 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
 nohup startx &
+sleep 1
 export DISPLAY=:0
+sleep 1
+nohup openbox &
 while true; do
-    result=$(xdpyinfo 2>&1)
-    if [[ $result == *"unable to open display"* ]]; then
-        echo "Display not available yet"
-        sleep 0.25
-    else
-        echo "X server is running and display is available."
-        sleep 0.25
-        break
-    fi
+  result=$(xdpyinfo 2>&1)
+  if [[ $result == *"unable to open display"* ]]; then
+    echo "Display not available yet"
+    sleep 0.25
+  else
+    echo "X server is running and display is available."
+    sleep 0.25
+    break
+  fi
 done
+sleep 1
 
 if [[ $mode = kiosk ]]; then
-  nohup firefox-esr --kiosk https://127.0.0.1:8006 &
+  nohup firefox-esr --kiosk "${KIOSK_URL}" &
 else
-
-  nohup firefox-esr https://127.0.0.1:8006 &
+  nohup firefox-esr "${KIOSK_URL}" &
 fi
-exit $retval
+
+wait $!
+
+if pgrep -x "xinit" >/dev/null; then
+  echo "Killing xinit process"
+  killall xinit
+fi
+
+if pgrep -x "firefox-esr" >/dev/null; then
+  echo "Killing firefox-esr process"
+  killall firefox-esr
+fi
+clear
+echo "-----------------"
+echo "Exiting Prox-Kiox"
+echo "-----------------"
 ```
 
 We need to ensure it can be ran so we will add execute permissions to it
 
-```chmod +x /user/bin/prox-kiox```
+```chmod +x /usr/bin/prox-kiox```
 
 Now its all set up, we can go ahead and run the following to get it started
 
 ``prox-kiox``
 
 
-Now you should be able to see FireFox runing and the PVE webui screen.
+Now you should be able to see FireFox running and the PVE webui screen.
 
 
 
@@ -140,7 +159,7 @@ After installing, its as simple as running `prox-kiox` in the cli to get it all 
 
 ## Uninstall
 
-At any time, you may run the uninstaller script ant it will clean the system of all packages that were installed and remove the autorun file so theres no issues after the fact.  You can do so with the following
+At any time, you may run the uninstaller script ant it will clean the system of all packages that were installed and remove the autorun file so there's no issues after the fact.  You can do so with the following
 
 ``sh <(curl -sS https://raw.githubusercontent.com/AJPNetworks/Prox-Kiox/main/uninstall.sh)``
 
@@ -183,5 +202,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Disclaimer
 
-This project is experimental and not official.  Any use of this project may put your resources at a higher risk of failure.  The publisher nor the contributers shall hold any liability for any damages casued by the user or the project.  Use at your own risk.
-
+This project is experimental and not official.  Any use of this project may put your resources at a higher risk of failure.  The publisher nor the contributors shall hold any liability for any damages caused by the user or the project.  Use at your own risk.
