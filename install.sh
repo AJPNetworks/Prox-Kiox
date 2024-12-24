@@ -270,5 +270,3 @@ echo ""
 rm -f /root/install.sh
 echo "You can run Prox-Kiox at any time by running the command 'prox-kiox'"
 echo ""
-
-
